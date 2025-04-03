@@ -1,81 +1,86 @@
-# jjhjnh
-
-# Data Flow Diagram
+# Face Recognition CCTV System Architecture
 
 ```mermaid
 graph TD
-    CV[CCTV Camera] --> VF[Video Feed]
-    VF --> FD[Face Detection]
-    FD --> FR[Face Recognition]
-    
-    FR --> |Known Face| KF[Known Face Processing]
-    FR --> |Unknown Face| UF[Unknown Face Processing]
-    
-    KF --> DB[(Database)]
-    KF --> AS[Alert System]
-    KF --> SI[Save Image]
-    
-    UF --> SI
-    
-    SI --> KFF[Known Faces Folder]
-    SI --> UFF[Unknown Faces Folder]
-    
-    VF --> VR[Video Recording]
-    VR --> RF[Recordings Folder]
-    
-    DB --> DU[Database Updates]
-    DU --> LOC[Location Tracking]
-    DU --> TS[Timestamp Updates]
+    subgraph GUI[Face Entry System GUI]
+        FE[FaceEntrySystem]
+        UC[Upload/Capture Image]
+        DB[(SQLite DB)]
+        TV[CCTV Toggle]
+    end
+
+    subgraph FR[Face Recognition Core]
+        SFR[SimpleFacerec]
+        FD[Face Detection]
+        FE1[Face Encoding]
+        FM[Face Matching]
+    end
+
+    subgraph CCTV[CCTV System]
+        VC[Video Capture]
+        REC[Video Recording]
+        AL[Alert System]
+        FS[Face Storage]
+    end
+
+    %% Data flow relationships
+    UC -->|Images| FR
+    FR -->|Face Data| DB
+    TV -->|Controls| CCTV
+    VC -->|Frame| FR
+    FR -->|Results| CCTV
+    CCTV -->|Location Updates| DB
+
+    %% File system interactions
+    subgraph FS[File Storage]
+        IMG[/images/]
+        KF[/known_faces/]
+        UF[/unknown_faces/]
+        VR[/cctv_recordings/]
+    end
+
+    UC -->|Upload| IMG
+    FS -->|Load| FR
+    CCTV -->|Save| KF
+    CCTV -->|Save| UF
+    CCTV -->|Record| VR
+
+    %% Component details
+    subgraph Components
+        direction LR
+        FD -->|Processes| FE1
+        FE1 -->|Compares| FM
+    end
 ```
 
-# Entity Relationship Diagram
+# Key Components
 
-```mermaid
-erDiagram
-    USER {
-        int id PK
-        string name
-        string location
-        timestamp time
-    }
-    
-    FACE_IMAGE {
-        string filename PK
-        string person_name FK
-        timestamp capture_time
-        string image_type
-    }
-    
-    RECORDING {
-        string filename PK
-        timestamp start_time
-        int duration
-    }
-    
-    USER ||--o{ FACE_IMAGE : "has"
-    RECORDING ||--|{ FACE_IMAGE : "contains"
-    
-```
+## 1. Face Entry System (GUI)
+- Manages user registration
+- Handles image capture/upload
+- Controls CCTV system
+- Displays recognition results
 
-System Components Description:
+## 2. Face Recognition Core
+- Loads and manages face encodings
+- Performs face detection
+- Matches faces against database
+- Returns recognition results
 
-1. **User Management**
-   - Primary key: ID (Auto-incrementing)
-   - Stores user name, current location, and timestamp
-   - Updated in real-time during face recognition
+## 3. CCTV System
+- Captures video feed
+- Records surveillance footage
+- Triggers alerts for recognized faces
+- Stores face images and recordings
 
-2. **Face Images**
-   - Stored in separate folders for known/unknown faces
-   - Filename includes person name and timestamp
-   - Linked to user records for known faces
+## 4. Storage System
+- SQLite database for user data
+- Image directory for training data
+- Separate folders for known/unknown faces
+- CCTV recordings archive
 
-3. **Video Recordings**
-   - Continuous recording in configurable duration segments
-   - Stored with timestamp-based filenames
-   - Contains multiple captured faces
-
-4. **Real-time Processing**
-   - Video capture from CCTV camera
-   - Face detection and recognition
-   - Alert system for recognized faces
-   - Database updates for location tracking
+## 5. Data Flow
+- Images → Face Recognition → Database
+- Video Feed → Face Detection → Recognition → Alert
+- Recognition Results → Database Updates
+- Face Images → File Storage
